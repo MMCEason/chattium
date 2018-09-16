@@ -6,7 +6,7 @@ import logo from '../icons/logo.png';
 import Welcome from './Welcome';
 import MessageCardGroup from './MessageCardGroup';
 import './App.css';
-
+ 
 const WS_API =
   process.env.REACT_APP_ENV === 'DEV' ? 'http://localhost:3000' : null;
 const REST_API =
@@ -24,6 +24,7 @@ class App extends Component {
     inputText: '',
     socket: openSocket(WS_API),
     showModal: true,
+    ws: new WebSocket('ws://192.168.11.68:1880/ws/chartS'),
   };
   msgCardGroup = null;
   componentDidMount() {
@@ -31,6 +32,19 @@ class App extends Component {
     fetch(`${REST_API}/messages`)
       .then(res => res.json())
       .then(messages => this.setState({ messages }));
+
+    // ws code
+    const {ws} = this.state;
+    console.log('register sw...')
+    ws.onmessage = ({ data }) => {
+      // console.log(`get message ${data}`);
+      console.log(data);
+      const { messages } = this.state;
+      this.setState({
+        messages: [...messages, JSON.parse(data)],
+      });
+      this.scrollBottom();
+    };
   }
   closeModal = e => {
     e.preventDefault();
@@ -43,13 +57,19 @@ class App extends Component {
   };
   onSubmit = e => {
     e.preventDefault();
-    const { user, socket, inputText } = this.state;
+    const { user, socket, inputText, ws } = this.state;
     if (!inputText) return;
-    socket.emit(NEW_MESSAGE, {
+    // socket.emit(NEW_MESSAGE, {
+    //   author: user,
+    //   payload: inputText,
+    // });
+    this.setState({ inputText: '' });
+    //ws
+    ws.send(JSON.stringify({
       author: user,
       payload: inputText,
-    });
-    this.setState({ inputText: '' });
+    }));
+    // ws.send(inputText);
   };
   onUserChange = e => {
     e.preventDefault();
@@ -93,6 +113,7 @@ class App extends Component {
           <img src={logo} className="App-logo" alt="logo" />
         </header>
         <Welcome numUsers={numUsers} />
+     
         <MessageCardGroup
           ref={setMsgCardGroupRef}
           messages={messages}
